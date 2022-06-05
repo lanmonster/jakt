@@ -1279,6 +1279,10 @@ struct Parser {
             Match => {
                 return .parse_match_expression()
             }
+            SingleQuotedByteString(quote, span) => {
+                .index++
+                return ParsedExpression::SingleQuotedByteString(val: quote, span)
+            }
             else => { }
         }
         return ParsedExpression::Garbage(span)

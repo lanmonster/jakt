@@ -36,6 +36,7 @@ struct ParsedNamespace {
     functions: [ParsedFunction]
     structs: [ParsedStruct]
     namespaces: [ParsedNamespace]
+    enums: [ParsedEnum],
 }
 
 struct ParsedStruct {
@@ -329,6 +330,24 @@ boxed enum ParsedType {
     Empty
 }
 
+struct ParsedEnum {
+    definition_linkage: DefinitionLinkage,
+    generic_parameters: [[String:Span]],
+    is_boxed: bool,
+    methods: [ParsedFunction],
+    name_span: Span,
+    name: String,
+    underlying_type: ParsedType,
+    variants: [EnumVariant],
+}
+
+enum EnumVariant {
+    Untyped(name: String, span: Span)
+    WithValue(name: String, value: ParsedExpression, span: Span)
+    StructLike(name: String, params: [ParsedVarDecl], span: Span)
+    Typed(name: String, inner_type: ParsedType, span: Span)
+}
+
 struct Parser {
     index: usize
     tokens: [Token]
@@ -368,7 +387,7 @@ struct Parser {
         //FIXME: The constructor should just be able to accept None directly and infer its type
         let none_string: String? = None
         let none_span: Span? = None
-        mut parsed_namespace = ParsedNamespace(name: none_string name_span: none_span, functions: [], structs: [], namespaces: [])
+        mut parsed_namespace = ParsedNamespace(name: none_string, name_span: none_span, functions: [], structs: [], namespaces: [], enums: [])
 
         while not .eof() {
             match .current() {
@@ -441,6 +460,10 @@ struct Parser {
                 RCurly => {
                     break
                 }
+                Enum => {
+                    let enumeration = .parse_enum(definition_linkage: DefinitionLinkage::Internal, is_boxed: false)
+                    parsed_namespace.enums.push(enumeration)
+                }
                 else => {
                     .error("Unrecognized token in namespace (probably not implemented yet)", .current().span())
                     break
@@ -449,6 +472,109 @@ struct Parser {
         }
 
         return parsed_namespace
+    }
+
+    function parse_enum(mut this, definition_linkage: DefinitionLinkage, is_boxed: bool) throws -> ParsedEnum {
+        mut enumeration = ParsedEnum(
+            definition_linkage,
+            generic_parameters: [],
+            is_boxed,
+            methods: [],
+            name_span: empty_span(),
+            name: "",
+            underlying_type: ParsedType::Empty,
+            variants: [],
+        );
+        .index++
+        match .current() {
+            Token::Identifier(name, span) => {
+                enumeration.name = name
+                enumeration.name_span = span
+                .index++
+            }
+            else => {
+                .error("Expected identifier for enum", .current().span())
+            }
+        }
+
+        match .current() {
+            Token::Colon => {
+                .index++
+                enumeration.underlying_type = .parse_typename()
+            }
+            else => {}
+        }
+
+        match .current() {
+            Token::LCurly => {
+                .index++
+            }
+            Token::LessThan => {
+                enumeration.generic_parameters = .parse_generic_parameters()
+            }
+            else => {
+                .error("Expected `{` to start the enum body", .current().span())
+            }
+        }
+        
+        while not .current() is RCurly {
+            match .current() {
+                Token::Identifier(name, span) => {
+                    if .peek(1) is LParen {
+                        .index += 2
+                        .skip_newlines()
+
+                        mut var_decls: [ParsedVarDecl] = []
+                        mut is_structlike = false
+                        while not .current() is RParen {
+                            if .current() is Eol {
+                                .index++
+                                continue;
+                            }
+
+                            if .peek(1) is Colon {
+                                is_structlike = true
+                                var_decls.push(.parse_variable_declaration(is_mutable: false))
+                            } else {
+                                is_structlike = false
+                                let inner_type = .parse_typename()
+                                enumeration.variants.push(EnumVariant::Typed(name, inner_type, span))
+                            }
+                        }
+                        .index++
+                        if is_structlike {
+                            enumeration.variants.push(EnumVariant::StructLike(name, params: var_decls, span))
+                        }
+                    } else {
+                        match enumeration.underlying_type {
+                            ParsedType::Empty => {
+                                if .peek(1) is Equal {
+                                    .index += 2
+                                    let expr = .parse_expression(allow_assignments: false)
+                                    enumeration.variants.push(EnumVariant::WithValue(name, value: expr, span))
+                                } else {
+                                    enumeration.variants.push(EnumVariant::Untyped(name, span))
+                                }
+                            }
+                            else => {
+                                if .peek(1) is Equal {
+                                    .index += 2
+                                    let expr = .parse_expression(allow_assignments: false)
+                                    enumeration.variants.push(EnumVariant::WithValue(name, value: expr, span))
+                                } else {
+                                    enumeration.variants.push(EnumVariant::Typed(name, inner_type: enumeration.underlying_type, span))
+                                }
+                            }
+                        }
+                    }
+                }
+                else => {}
+            }
+            .index++
+        }
+        .index++
+
+        return enumeration
     }
 
     public function parse_struct(mut this, anon definition_linkage: DefinitionLinkage, anon definition_type: DefinitionType) throws -> ParsedStruct {

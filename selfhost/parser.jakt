@@ -686,7 +686,7 @@ struct Parser {
                             if .current() is Identifier and .peek(1) is RParen {
                                 var_decls.push(ParsedVarDecl(
                                     name: ""
-                                    parsed_type: .parse_typename()
+                                    parsed_type: .parse_typename(ignore_errors: false)
                                     is_mutable: false
                                     span: .current().span()
                                 ))
@@ -821,7 +821,7 @@ struct Parser {
                 .error("Invalid enum definition: Value enums must not have an underlying type", .current().span())
             }
             .index++
-            underlying_type = .parse_typename()
+            underlying_type = .parse_typename(ignore_errors: false)
         }
 
         if .eof() {
@@ -1050,7 +1050,7 @@ struct Parser {
         // Super class
         if .current() is Colon {
             .index++
-            super_class = .parse_typename()
+            super_class = .parse_typename(ignore_errors: false)
         }
 
         if .eof() {
@@ -1216,7 +1216,7 @@ struct Parser {
         if .current() is Arrow {
             .index++
             let start = .current().span()
-            parsed_function.return_type = .parse_typename()
+            parsed_function.return_type = .parse_typename(ignore_errors: false)
             parsed_function.return_type_span = merge_spans(start, .previous().span())
         }
 
@@ -1266,9 +1266,8 @@ struct Parser {
         )
     }
 
-    function parse_typename(mut this) throws -> ParsedType {
-        mut parsed_type = .parse_type_shorthand()
-
+    function parse_typename(mut this, ignore_errors: bool) throws -> ParsedType {
+        mut parsed_type = .parse_type_shorthand(ignore_errors)
         if not parsed_type is Empty {
             return parsed_type
         }
@@ -1278,7 +1277,7 @@ struct Parser {
         parsed_type = match .current() {
             Raw => {
                 .index++
-                let inner = .parse_typename()
+                let inner = .parse_typename(ignore_errors)
                 let span = merge_spans(start, .current().span())
                 // NOTE: We rewrite `raw T?` from `RawPtr<Optional<T>>` to `Optional<RawPtr<T>>`
                 yield match inner {
@@ -1288,13 +1287,15 @@ struct Parser {
             }
             Weak => {
                 .index++
-                let inner = .parse_typename()
+                let inner = .parse_typename(ignore_errors)
                 let span = merge_spans(start, .current().span())
                 // NOTE: We rewrite `weak T?` from `WeakPtr<Optional<T>>` to `WeakPtr<T>`
                 yield match inner {
                     Optional(inner) => ParsedType::WeakPtr(inner, span)
                     else => {
-                        .error("missing `?` after weak pointer type name", span)
+                        if not ignore_errors {
+                            .error("missing `?` after weak pointer type name", span)
+                        }
                         yield ParsedType::WeakPtr(inner, span)
                     }
                 }
@@ -1318,7 +1319,9 @@ struct Parser {
                 yield parsed_type
             }
             else => {
-                .error("Expected type name", .current().span())
+                if not ignore_errors {
+                    .error("Expected type name", .current().span())
+                }
                 yield ParsedType::Empty
             }
         }
@@ -1350,7 +1353,7 @@ struct Parser {
 
                 let decl_span = .current().span()
 
-                let var_type = .parse_typename()
+                let var_type = .parse_typename(ignore_errors: false)
                 return ParsedVarDecl(
                     name: var_name,
                     parsed_type: var_type,
@@ -1368,53 +1371,59 @@ struct Parser {
         )
     }
 
-    function parse_type_shorthand(mut this) throws -> ParsedType => match .current() {
-        LSquare => .parse_type_shorthand_array_or_dictionary()
-        LCurly => .parse_type_shorthand_set()
-        LParen => .parse_type_shorthand_tuple()
+    function parse_type_shorthand(mut this, ignore_errors: bool) throws -> ParsedType => match .current() {
+        LSquare => .parse_type_shorthand_array_or_dictionary(ignore_errors)
+        LCurly => .parse_type_shorthand_set(ignore_errors)
+        LParen => .parse_type_shorthand_tuple(ignore_errors)
         else => ParsedType::Empty
     }
 
-    function parse_type_shorthand_array_or_dictionary(mut this) throws -> ParsedType {
+    function parse_type_shorthand_array_or_dictionary(mut this, ignore_errors: bool) throws -> ParsedType {
         // [T] is shorthand for Array<T>
         // [K:V] is shorthand for Dictionary<K, V>
         let start = .current().span()
         .index++
-        let inner = .parse_typename()
+        let inner = .parse_typename(ignore_errors)
         if .current() is RSquare {
             .index++
             return ParsedType::JaktArray(inner, span: merge_spans(start, .previous().span()))
         }
         if .current() is Colon {
             .index++
-            let value = .parse_typename()
+            let value = .parse_typename(ignore_errors)
             if .current() is RSquare {
                 .index++
             } else {
-                .error("Expected ']'", .current().span())
+                if not ignore_errors {
+                    .error("Expected ']'", .current().span())
+                }
             }
             return ParsedType::Dictionary(key: inner, value, span: merge_spans(start, .current().span()))
         }
-        .error("Expected shorthand type", .current().span())
+        if not ignore_errors {
+            .error("Expected shorthand type", .current().span())
+        }
         return ParsedType::Empty
     }
 
-    function parse_type_shorthand_set(mut this) throws -> ParsedType {
+    function parse_type_shorthand_set(mut this, ignore_errors: bool) throws -> ParsedType {
         // {T} is shorthand for Set<T>
         let start = .current().span()
         if .current() is LCurly {
             .index++
         }
-        let inner = .parse_typename()
+        let inner = .parse_typename(ignore_errors)
         if .current() is RCurly {
             .index++
             return ParsedType::Set(inner, span: merge_spans(start, .current().span()))
         }
-        .error("Expected '}'", .current().span())
+        if not ignore_errors {
+            .error("Expected '}'", .current().span())
+        }
         return ParsedType::Empty
     }
 
-    function parse_type_shorthand_tuple(mut this) throws -> ParsedType {
+    function parse_type_shorthand_tuple(mut this, ignore_errors: bool) throws -> ParsedType {
         // (A, B, C) is shorthand for Tuple<A, B, C>
         let start = .current().span()
         .index++
@@ -1427,9 +1436,11 @@ struct Parser {
             if .current() is Comma {
                 .index++
             }
-            types.push(.parse_typename())
+            types.push(.parse_typename(ignore_errors))
         }
-        .error("Expected ‘)’", .current().span())
+        if not ignore_errors {
+            .error("Expected ‘)’", .current().span())
+        }
         return ParsedType::Empty
     }
 
@@ -1884,11 +1895,11 @@ struct Parser {
                     let cast = match .current() {
                         ExclamationPoint => {
                             .index++
-                            yield TypeCast::Infallible(.parse_typename())
+                            yield TypeCast::Infallible(.parse_typename(ignore_errors: false))
                         }
                         QuestionMark => {
                             .index++
-                            yield TypeCast::Fallible(.parse_typename())
+                            yield TypeCast::Fallible(.parse_typename(ignore_errors: false))
                         }
                         else => {
                             .error("Invalid cast syntax", cast_span)
@@ -1904,7 +1915,7 @@ struct Parser {
                 }
                 Is => {
                     .index++
-                    let parsed_type = .parse_typename()
+                    let parsed_type = .parse_typename(ignore_errors: false)
                     let span = merge_spans(start, .current().span())
                     yield ParsedExpression::UnaryOp(expr: result, op: UnaryOperator::Is(parsed_type), span)
                 }
@@ -2287,11 +2298,11 @@ struct Parser {
                             }
                             else => {
                                 let index_before = .index
-                                let inner_type = .parse_typename()
-                                if index_before == .index {
+                                let inner_type = .parse_typename(ignore_errors: true)
+                                if index_before == .index or inner_type is Empty {
                                     // Can't parse further, this is not a generic call.
                                     .index = index_reset;
-                                    break
+                                    return None
                                 }
                                 inner_types.push(inner_type)
                             }
@@ -2422,7 +2433,8 @@ struct Parser {
                     }
 
                     .skip_newlines()
-                    let parsed_type = .parse_typename()
+
+                    let parsed_type = .parse_typename(ignore_errors: false)
                     whitelist.push(parsed_type)
                     expect_comma = true
                 }

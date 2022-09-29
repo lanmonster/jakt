@@ -120,13 +120,13 @@ ErrorOr<String> File::current_executable_path()
         return Error::from_errno(GetLastError());
 #else
     const char* path_to_readlink = nullptr;
-#  ifdef AK_OS_MACOS
+#  ifdef __APPLE__
     uint32_t size = sizeof(path);
     auto os_ret = _NSGetExecutablePath(path, &size);
     if (os_ret != 0) {
         return Error::from_errno(ENAMETOOLONG);
     }
-    path_to_readlink = path;
+    return String(path);
 #  elif defined(AK_OS_BSD_GENERIC)
 #   error "TODO: Implement current_executable_path using sysctl(KERN_PROC_PATHNAME) for non-macOS BSDs"
 #  else

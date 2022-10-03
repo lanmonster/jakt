@@ -1,69 +1,6 @@
 #include "lexer.h"
 namespace Jakt {
 namespace lexer {
-bool is_ascii_alphanumeric(const u8 c) {
-{
-return ((lexer::is_ascii_alpha(c) || lexer::is_ascii_digit(c)));
-}
-}
-
-bool is_ascii_alpha(const u8 c) {
-{
-return ((((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z'))));
-}
-}
-
-f32 f64_to_f32(const f64 number) {
-{
-f32 f32_value = static_cast<i64>(0LL);
-{
-f32_value = (f32)number;
-}
-
-return (f32_value);
-}
-}
-
-ErrorOr<lexer::Token> make_float_token(const f64 number,const lexer::LiteralSuffix suffix,const utility::Span span) {
-{
-return (JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<lexer::Token, ErrorOr<lexer::Token>>{
-auto&& __jakt_match_variant = suffix;
-switch(__jakt_match_variant.index()) {
-case 10: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::F32>();
-return JaktInternal::ExplicitValue( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::F32(lexer::f64_to_f32(number)) } ,span) } );
-};/*case end*/
-case 11: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::F64>();
-return JaktInternal::ExplicitValue( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::F64(number) } ,span) } );
-};/*case end*/
-default: {
-return JaktInternal::ExplicitValue( lexer::Token { typename lexer::Token::Garbage(span) } );
-};/*case end*/
-}/*switch end*/
-}()
-)));
-}
-}
-
-bool is_ascii_octdigit(const u8 c) {
-{
-return (((c >= '0') && (c <= '7')));
-}
-}
-
-bool is_ascii_hexdigit(const u8 c) {
-{
-return (((((c >= '0') && (c <= '9')) || ((c >= 'a') && (c <= 'f'))) || ((c >= 'A') && (c <= 'F'))));
-}
-}
-
-bool is_ascii_digit(const u8 c) {
-{
-return (((c >= '0') && (c <= '9')));
-}
-}
-
 ErrorOr<String> lexer::Lexer::debug_description() const { auto builder = MUST(StringBuilder::create());TRY(builder.append("Lexer("));{
 JaktInternal::PrettyPrint::ScopedLevelIncrease increase_indent {};
 TRY(JaktInternal::PrettyPrint::output_indentation(builder));TRY(builder.append("index: "));TRY(builder.appendff("{}, ", index));
@@ -116,7 +53,7 @@ if (((*this).eof())){
 return (JaktInternal::OptionalNone());
 }
 const u8 ch = ((*this).peek());
-if (((*this).is_whitespace(ch))){
+if (utility::is_whitespace(ch)){
 ((((*this).index)++));
 }
 else {
@@ -252,12 +189,6 @@ return (TRY((((builder).to_string()))));
 }
 }
 
-bool lexer::Lexer::is_whitespace(const u8 ch) const {
-{
-return ((((((ch == ' ') || (ch == '\t')) || (ch == '\r')) || (ch == '\f')) || (ch == '\v')));
-}
-}
-
 ErrorOr<lexer::Token> lexer::Lexer::lex_character_constant_or_name() {
 {
 if ((((*this).peek_ahead(static_cast<size_t>(1ULL))) != '\'')){
@@ -313,142 +244,6 @@ return JaktInternal::ExplicitValue( lexer::Token { typename lexer::Token::Dot(((
 }
 }()))
 );
-}
-}
-
-ErrorOr<lexer::Token> lexer::Lexer::make_integer_token(const u64 number,const lexer::LiteralSuffix suffix,const utility::Span span) {
-{
-JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<void, ErrorOr<lexer::Token>>{
-auto&& __jakt_match_variant = suffix;
-switch(__jakt_match_variant.index()) {
-case 0: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::None>();
-{
-const JaktInternal::Optional<i64> n = (fallible_integer_cast<i64>((number)));
-if (((n).has_value())){
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::UnknownSigned((n.value())) } ,span) } );
-}
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::UnknownUnsigned(number) } ,span) } );
-}
-return JaktInternal::ExplicitValue<void>();
-};/*case end*/
-case 2: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::U8>();
-{
-const JaktInternal::Optional<u8> n = (fallible_integer_cast<u8>((number)));
-if ((!(((n).has_value())))){
-TRY((((*this).error(TRY((String::formatted(String("Number {} cannot fit in integer type {}"),number,suffix))),span))));
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::U64(number) } ,span) } );
-}
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::U8((n.value())) } ,span) } );
-}
-return JaktInternal::ExplicitValue<void>();
-};/*case end*/
-case 3: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::U16>();
-{
-const JaktInternal::Optional<u16> n = (fallible_integer_cast<u16>((number)));
-if ((!(((n).has_value())))){
-TRY((((*this).error(TRY((String::formatted(String("Number {} cannot fit in integer type {}"),number,suffix))),span))));
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::U64(number) } ,span) } );
-}
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::U16((n.value())) } ,span) } );
-}
-return JaktInternal::ExplicitValue<void>();
-};/*case end*/
-case 4: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::U32>();
-{
-const JaktInternal::Optional<u32> n = (fallible_integer_cast<u32>((number)));
-if ((!(((n).has_value())))){
-TRY((((*this).error(TRY((String::formatted(String("Number {} cannot fit in integer type {}"),number,suffix))),span))));
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::U64(number) } ,span) } );
-}
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::U32((n.value())) } ,span) } );
-}
-return JaktInternal::ExplicitValue<void>();
-};/*case end*/
-case 5: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::U64>();
-{
-const JaktInternal::Optional<u64> n = (fallible_integer_cast<u64>((number)));
-if ((!(((n).has_value())))){
-TRY((((*this).error(TRY((String::formatted(String("Number {} cannot fit in integer type {}"),number,suffix))),span))));
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::U64(number) } ,span) } );
-}
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::U64((n.value())) } ,span) } );
-}
-return JaktInternal::ExplicitValue<void>();
-};/*case end*/
-case 1: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::UZ>();
-{
-const JaktInternal::Optional<size_t> n = (fallible_integer_cast<size_t>((number)));
-if ((!(((n).has_value())))){
-TRY((((*this).error(TRY((String::formatted(String("Number {} cannot fit in integer type {}"),number,suffix))),span))));
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::U64(number) } ,span) } );
-}
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::USize((infallible_integer_cast<u64>(((n.value()))))) } ,span) } );
-}
-return JaktInternal::ExplicitValue<void>();
-};/*case end*/
-case 6: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::I8>();
-{
-const JaktInternal::Optional<i8> n = (fallible_integer_cast<i8>((number)));
-if ((!(((n).has_value())))){
-TRY((((*this).error(TRY((String::formatted(String("Number {} cannot fit in integer type {}"),number,suffix))),span))));
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::U64(number) } ,span) } );
-}
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::I8((n.value())) } ,span) } );
-}
-return JaktInternal::ExplicitValue<void>();
-};/*case end*/
-case 7: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::I16>();
-{
-const JaktInternal::Optional<i16> n = (fallible_integer_cast<i16>((number)));
-if ((!(((n).has_value())))){
-TRY((((*this).error(TRY((String::formatted(String("Number {} cannot fit in integer type {}"),number,suffix))),span))));
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::U64(number) } ,span) } );
-}
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::I16((n.value())) } ,span) } );
-}
-return JaktInternal::ExplicitValue<void>();
-};/*case end*/
-case 8: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::I32>();
-{
-const JaktInternal::Optional<i32> n = (fallible_integer_cast<i32>((number)));
-if ((!(((n).has_value())))){
-TRY((((*this).error(TRY((String::formatted(String("Number {} cannot fit in integer type {}"),number,suffix))),span))));
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::U64(number) } ,span) } );
-}
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::I32((n.value())) } ,span) } );
-}
-return JaktInternal::ExplicitValue<void>();
-};/*case end*/
-case 9: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::I64>();
-{
-const JaktInternal::Optional<i64> n = (fallible_integer_cast<i64>((number)));
-if ((!(((n).has_value())))){
-TRY((((*this).error(TRY((String::formatted(String("Number {} cannot fit in integer type {}"),number,suffix))),span))));
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::U64(number) } ,span) } );
-}
-return ( lexer::Token { typename lexer::Token::Number( lexer::NumericConstant { typename lexer::NumericConstant::I64((n.value())) } ,span) } );
-}
-return JaktInternal::ExplicitValue<void>();
-};/*case end*/
-default: {
-{
-}
-return JaktInternal::ExplicitValue<void>();
-};/*case end*/
-}/*switch end*/
-}()
-));
-return ( lexer::Token { typename lexer::Token::Garbage(span) } );
 }
 }
 
@@ -576,12 +371,12 @@ if (((*this).eof())){
 TRY((((*this).error(String("unexpected eof"),((*this).span(start,start))))));
 return ( lexer::Token { typename lexer::Token::Garbage(((*this).span(start,start))) } );
 }
-if (lexer::is_ascii_digit(((*this).peek()))){
+if (utility::is_ascii_digit(((*this).peek()))){
 return (TRY((((*this).lex_number()))));
 }
-else if ((lexer::is_ascii_alpha(((*this).peek())) || (((*this).peek()) == '_'))){
+else if ((utility::is_ascii_alpha(((*this).peek())) || (((*this).peek()) == '_'))){
 StringBuilder string_builder = TRY((StringBuilder::create()));
-while ((lexer::is_ascii_alphanumeric(((*this).peek())) || (((*this).peek()) == '_'))){
+while ((utility::is_ascii_alphanumeric(((*this).peek())) || (((*this).peek()) == '_'))){
 const u8 value = ((((*this).input))[((*this).index)]);
 (++(((*this).index)));
 TRY((((string_builder).append(value))));
@@ -686,9 +481,9 @@ return JaktInternal::ExplicitValue( lexer::Token { typename lexer::Token::Exclam
 }
 }
 
-JaktInternal::Optional<lexer::LiteralSuffix> lexer::Lexer::consume_numeric_literal_suffix() {
+ErrorOr<lexer::LiteralSuffix> lexer::Lexer::consume_numeric_literal_suffix() {
 {
-JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<void,JaktInternal::Optional<lexer::LiteralSuffix>>{
+JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<void,ErrorOr<lexer::LiteralSuffix>>{
 auto __jakt_enum_value = (((*this).peek()));
 if (__jakt_enum_value == 'u') {
 {
@@ -707,7 +502,7 @@ return JaktInternal::ExplicitValue<void>();
 }
 else {
 {
-return (JaktInternal::OptionalNone());
+return ( lexer::LiteralSuffix { typename lexer::LiteralSuffix::None() } );
 }
 return JaktInternal::ExplicitValue<void>();
 }
@@ -720,19 +515,19 @@ return ( lexer::LiteralSuffix { typename lexer::LiteralSuffix::UZ() } );
 }
 size_t local_index = static_cast<size_t>(1ULL);
 i64 width = static_cast<i64>(0LL);
-while (lexer::is_ascii_digit(((*this).peek_ahead(local_index)))){
+while (utility::is_ascii_digit(((*this).peek_ahead(local_index)))){
 if ((local_index > static_cast<size_t>(3ULL))){
-return (JaktInternal::OptionalNone());
+return ( lexer::LiteralSuffix { typename lexer::LiteralSuffix::None() } );
 }
 const u8 value = ((((*this).input))[(JaktInternal::checked_add<size_t>(((*this).index),local_index))]);
 (++(local_index));
 const i64 digit = as_saturated<i64, u8>((JaktInternal::checked_sub<u8>(value,'0')));
 (width = (JaktInternal::checked_add<i64>((JaktInternal::checked_mul<i64>(width,static_cast<i64>(10LL))),digit)));
 }
-const lexer::LiteralSuffix suffix = JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<lexer::LiteralSuffix,JaktInternal::Optional<lexer::LiteralSuffix>>{
+const lexer::LiteralSuffix suffix = JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<lexer::LiteralSuffix,ErrorOr<lexer::LiteralSuffix>>{
 auto __jakt_enum_value = (((*this).peek()));
 if (__jakt_enum_value == 'u') {
-return JaktInternal::ExplicitValue(JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<lexer::LiteralSuffix,JaktInternal::Optional<lexer::LiteralSuffix>>{
+return JaktInternal::ExplicitValue(JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<lexer::LiteralSuffix,ErrorOr<lexer::LiteralSuffix>>{
 auto __jakt_enum_value = (width);
 if (__jakt_enum_value == static_cast<i64>(8LL)) {
 return JaktInternal::ExplicitValue( lexer::LiteralSuffix { typename lexer::LiteralSuffix::U8() } );
@@ -747,15 +542,13 @@ else if (__jakt_enum_value == static_cast<i64>(64LL)) {
 return JaktInternal::ExplicitValue( lexer::LiteralSuffix { typename lexer::LiteralSuffix::U64() } );
 }
 else {
-{
-return (JaktInternal::OptionalNone());
-}
+return JaktInternal::ExplicitValue( lexer::LiteralSuffix { typename lexer::LiteralSuffix::None() } );
 }
 }()))
 );
 }
 else if (__jakt_enum_value == 'i') {
-return JaktInternal::ExplicitValue(JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<lexer::LiteralSuffix,JaktInternal::Optional<lexer::LiteralSuffix>>{
+return JaktInternal::ExplicitValue(JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<lexer::LiteralSuffix,ErrorOr<lexer::LiteralSuffix>>{
 auto __jakt_enum_value = (width);
 if (__jakt_enum_value == static_cast<i64>(8LL)) {
 return JaktInternal::ExplicitValue( lexer::LiteralSuffix { typename lexer::LiteralSuffix::I8() } );
@@ -770,15 +563,13 @@ else if (__jakt_enum_value == static_cast<i64>(64LL)) {
 return JaktInternal::ExplicitValue( lexer::LiteralSuffix { typename lexer::LiteralSuffix::I64() } );
 }
 else {
-{
-return (JaktInternal::OptionalNone());
-}
+return JaktInternal::ExplicitValue( lexer::LiteralSuffix { typename lexer::LiteralSuffix::None() } );
 }
 }()))
 );
 }
 else if (__jakt_enum_value == 'f') {
-return JaktInternal::ExplicitValue(JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<lexer::LiteralSuffix,JaktInternal::Optional<lexer::LiteralSuffix>>{
+return JaktInternal::ExplicitValue(JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<lexer::LiteralSuffix,ErrorOr<lexer::LiteralSuffix>>{
 auto __jakt_enum_value = (width);
 if (__jakt_enum_value == static_cast<i64>(32LL)) {
 return JaktInternal::ExplicitValue( lexer::LiteralSuffix { typename lexer::LiteralSuffix::F32() } );
@@ -787,21 +578,19 @@ else if (__jakt_enum_value == static_cast<i64>(64LL)) {
 return JaktInternal::ExplicitValue( lexer::LiteralSuffix { typename lexer::LiteralSuffix::F64() } );
 }
 else {
-{
-return (JaktInternal::OptionalNone());
-}
+return JaktInternal::ExplicitValue( lexer::LiteralSuffix { typename lexer::LiteralSuffix::None() } );
 }
 }()))
 );
 }
 else {
-{
-return (JaktInternal::OptionalNone());
-}
+return JaktInternal::ExplicitValue( lexer::LiteralSuffix { typename lexer::LiteralSuffix::None() } );
 }
 }()))
 ;
+if ((!(((suffix).index() == 0 /* None */)))){
 ({auto& _jakt_ref = ((*this).index);_jakt_ref = JaktInternal::checked_add<size_t>(_jakt_ref, local_index);});
+}
 return (suffix);
 }
 }
@@ -823,6 +612,32 @@ return JaktInternal::ExplicitValue( lexer::Token { typename lexer::Token::Colon(
 }
 
 lexer::Lexer::Lexer(size_t a_index, JaktInternal::Array<u8> a_input, NonnullRefPtr<compiler::Compiler> a_compiler, JaktInternal::Optional<JaktInternal::Array<u8>> a_comment_contents) :index(a_index), input(a_input), compiler(a_compiler), comment_contents(a_comment_contents){}
+
+bool lexer::Lexer::valid_digit(const lexer::LiteralPrefix prefix,const u8 digit,const bool decimal_allowed) {
+{
+return (JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<bool, bool>{
+auto&& __jakt_match_variant = prefix;
+switch(__jakt_match_variant.index()) {
+case 1: {
+auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralPrefix::Hexadecimal>();
+return JaktInternal::ExplicitValue(utility::is_ascii_hexdigit(digit));
+};/*case end*/
+case 2: {
+auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralPrefix::Octal>();
+return JaktInternal::ExplicitValue(utility::is_ascii_octdigit(digit));
+};/*case end*/
+case 3: {
+auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralPrefix::Binary>();
+return JaktInternal::ExplicitValue(utility::is_ascii_binary(digit));
+};/*case end*/
+default: {
+return JaktInternal::ExplicitValue((utility::is_ascii_digit(digit) || (decimal_allowed && (digit == '.'))));
+};/*case end*/
+}/*switch end*/
+}()
+)));
+}
+}
 
 ErrorOr<void> lexer::Lexer::error(const String message,const utility::Span span) {
 {
@@ -924,91 +739,30 @@ return JaktInternal::ExplicitValue( lexer::Token { typename lexer::Token::Caret(
 ErrorOr<lexer::Token> lexer::Lexer::lex_number() {
 {
 const size_t start = ((*this).index);
-u64 total = static_cast<u64>(0ULL);
+bool floating = false;
+lexer::LiteralPrefix prefix =  lexer::LiteralPrefix { typename lexer::LiteralPrefix::None() } ;
+StringBuilder number = TRY((StringBuilder::create()));
 if ((((*this).peek()) == '0')){
 JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<void,ErrorOr<lexer::Token>>{
 auto __jakt_enum_value = (((*this).peek_ahead(static_cast<size_t>(1ULL))));
 if (__jakt_enum_value == 'x') {
 {
+(prefix =  lexer::LiteralPrefix { typename lexer::LiteralPrefix::Hexadecimal() } );
 ({auto& _jakt_ref = ((*this).index);_jakt_ref = JaktInternal::checked_add<size_t>(_jakt_ref, static_cast<size_t>(2ULL));});
-while (lexer::is_ascii_hexdigit(((*this).peek()))){
-u8 offset = static_cast<u8>(0);
-if (((((*this).peek()) >= 'a') && (((*this).peek()) <= 'z'))){
-(offset = static_cast<u8>(39));
-}
-else if (((((*this).peek()) >= 'A') && (((*this).peek()) <= 'Z'))){
-(offset = static_cast<u8>(7));
-}
-const u8 value = (JaktInternal::checked_sub<u8>(((((*this).input))[((*this).index)]),offset));
-(++(((*this).index)));
-const u64 digit = as_saturated<u64, u8>((JaktInternal::checked_sub<u8>(value,'0')));
-(total = (JaktInternal::checked_add<u64>((JaktInternal::checked_mul<u64>(total,static_cast<u64>(16ULL))),digit)));
-if ((((*this).peek()) == '_')){
-(++(((*this).index)));
-}
-}
-const size_t end = ((*this).index);
-const utility::Span span = ((*this).span(start,end));
-if ((((*this).peek_behind(static_cast<size_t>(1ULL))) == '_')){
-TRY((((*this).error(String("Hexadecimal number literal cannot end with underscore"),span))));
-return ( lexer::Token { typename lexer::Token::Garbage(span) } );
-}
-const lexer::LiteralSuffix suffix = ((*this).consume_numeric_literal_suffix()).value_or_lazy_evaluated([&] { return  lexer::LiteralSuffix { typename lexer::LiteralSuffix::None() } ; });
-return (TRY((((*this).make_integer_token(total,suffix,((*this).span(start,end)))))));
 }
 return JaktInternal::ExplicitValue<void>();
 }
 else if (__jakt_enum_value == 'o') {
 {
+(prefix =  lexer::LiteralPrefix { typename lexer::LiteralPrefix::Octal() } );
 ({auto& _jakt_ref = ((*this).index);_jakt_ref = JaktInternal::checked_add<size_t>(_jakt_ref, static_cast<size_t>(2ULL));});
-while (lexer::is_ascii_octdigit(((*this).peek()))){
-const u8 value = ((((*this).input))[((*this).index)]);
-(++(((*this).index)));
-const u64 digit = as_saturated<u64, u8>((JaktInternal::checked_sub<u8>(value,'0')));
-(total = (JaktInternal::checked_add<u64>((JaktInternal::checked_mul<u64>(total,static_cast<u64>(8ULL))),digit)));
-if ((((*this).peek()) == '_')){
-(++(((*this).index)));
-}
-}
-const size_t end = ((*this).index);
-const utility::Span span = ((*this).span(start,end));
-if ((((*this).peek_behind(static_cast<size_t>(1ULL))) == '_')){
-TRY((((*this).error(String("Octal number literal cannot end with underscore"),span))));
-return ( lexer::Token { typename lexer::Token::Garbage(span) } );
-}
-const lexer::LiteralSuffix suffix = ((*this).consume_numeric_literal_suffix()).value_or_lazy_evaluated([&] { return  lexer::LiteralSuffix { typename lexer::LiteralSuffix::None() } ; });
-if (lexer::is_ascii_alphanumeric(((*this).peek()))){
-TRY((((*this).error(String("Could not parse octal number"),span))));
-return ( lexer::Token { typename lexer::Token::Garbage(span) } );
-}
-return (TRY((((*this).make_integer_token(total,suffix,span)))));
 }
 return JaktInternal::ExplicitValue<void>();
 }
 else if (__jakt_enum_value == 'b') {
 {
+(prefix =  lexer::LiteralPrefix { typename lexer::LiteralPrefix::Binary() } );
 ({auto& _jakt_ref = ((*this).index);_jakt_ref = JaktInternal::checked_add<size_t>(_jakt_ref, static_cast<size_t>(2ULL));});
-while (((((*this).peek()) == '0') || (((*this).peek()) == '1'))){
-const u8 value = ((((*this).input))[((*this).index)]);
-(++(((*this).index)));
-const u64 digit = as_saturated<u64, u8>((JaktInternal::checked_sub<u8>(value,'0')));
-(total = (JaktInternal::checked_add<u64>((JaktInternal::checked_mul<u64>(total,static_cast<u64>(2ULL))),digit)));
-if ((((*this).peek()) == '_')){
-(++(((*this).index)));
-}
-}
-const size_t end = ((*this).index);
-const utility::Span span = ((*this).span(start,end));
-if ((((*this).peek_behind(static_cast<size_t>(1ULL))) == '_')){
-TRY((((*this).error(String("Binary number literal cannot end with underscore"),span))));
-return ( lexer::Token { typename lexer::Token::Garbage(span) } );
-}
-const lexer::LiteralSuffix suffix = ((*this).consume_numeric_literal_suffix()).value_or_lazy_evaluated([&] { return  lexer::LiteralSuffix { typename lexer::LiteralSuffix::None() } ; });
-if (lexer::is_ascii_alphanumeric(((*this).peek()))){
-TRY((((*this).error(String("Could not parse binary number"),span))));
-return ( lexer::Token { typename lexer::Token::Garbage(span) } );
-}
-return (TRY((((*this).make_integer_token(total,suffix,span)))));
 }
 return JaktInternal::ExplicitValue<void>();
 }
@@ -1021,39 +775,25 @@ return JaktInternal::ExplicitValue<void>();
 }()))
 ;
 }
-bool number_too_large = false;
-bool floating = false;
-u64 fraction_nominator = static_cast<u64>(0ULL);
-u64 fraction_denominator = static_cast<u64>(1ULL);
 while ((!(((*this).eof())))){
 const u8 value = ((((*this).input))[((*this).index)]);
-if ((value == '.')){
-if (((!(lexer::is_ascii_digit(((*this).peek_ahead(static_cast<size_t>(1ULL)))))) || floating)){
+if ((!(((*this).valid_digit(prefix,value,true))))){
 break;
 }
+if ((value == '.')){
+if ((floating || (!(((*this).valid_digit(prefix,((*this).peek_ahead(static_cast<size_t>(1ULL))),false)))))){
+break;
+}
+TRY((((number).append('.'))));
 (floating = true);
 ((((*this).index)++));
 continue;
 }
-else if ((!(lexer::is_ascii_digit(value)))){
-break;
-}
+TRY((((number).append(value))));
 (++(((*this).index)));
-const u64 digit = as_saturated<u64, u8>((JaktInternal::checked_sub<u8>(value,'0')));
-if ((!(floating))){
-const u64 old_total = total;
-(total = unchecked_add<u64>(unchecked_mul<u64>(total,static_cast<u64>(10ULL)),digit));
-if ((total < old_total)){
-(number_too_large = true);
-}
-}
-else {
-(fraction_nominator = (JaktInternal::checked_add<u64>((JaktInternal::checked_mul<u64>(fraction_nominator,static_cast<u64>(10ULL))),digit)));
-({auto& _jakt_ref = fraction_denominator;_jakt_ref = JaktInternal::checked_mul<u64>(_jakt_ref, static_cast<u64>(10ULL));});
-}
-
 if ((((*this).peek()) == '_')){
-if (lexer::is_ascii_digit(((*this).peek_ahead(static_cast<size_t>(1ULL))))){
+TRY((((number).append('_'))));
+if (((*this).valid_digit(prefix,((*this).peek_ahead(static_cast<size_t>(1ULL))),true))){
 (++(((*this).index)));
 }
 else {
@@ -1062,78 +802,8 @@ break;
 
 }
 }
-const size_t end = ((*this).index);
-const utility::Span span = ((*this).span(start,end));
-if (number_too_large){
-TRY((((*this).error(TRY((String::formatted(String("Integer literal too large")))),span))));
-return ( lexer::Token { typename lexer::Token::Garbage(span) } );
-}
-if ((((*this).peek()) == '_')){
-TRY((((*this).error(String("Number literal cannot end with underscore"),span))));
-return ( lexer::Token { typename lexer::Token::Garbage(span) } );
-}
-const lexer::LiteralSuffix default_suffix = JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<lexer::LiteralSuffix,ErrorOr<lexer::Token>>{
-auto __jakt_enum_value = (floating);
-if (__jakt_enum_value == true) {
-return JaktInternal::ExplicitValue( lexer::LiteralSuffix { typename lexer::LiteralSuffix::F64() } );
-}
-else {
-return JaktInternal::ExplicitValue( lexer::LiteralSuffix { typename lexer::LiteralSuffix::None() } );
-}
-}()))
-;
-const lexer::LiteralSuffix suffix = ((*this).consume_numeric_literal_suffix()).value_or_lazy_evaluated([&] { return default_suffix; });
-if (lexer::is_ascii_alphanumeric(((*this).peek()))){
-TRY((((*this).error(String("Could not parse number"),span))));
-return ( lexer::Token { typename lexer::Token::Garbage(span) } );
-}
-const bool is_float_suffix = JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<bool, ErrorOr<lexer::Token>>{
-auto&& __jakt_match_variant = suffix;
-switch(__jakt_match_variant.index()) {
-case 10: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::F32>();
-return JaktInternal::ExplicitValue(true);
-};/*case end*/
-case 11: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::F64>();
-return JaktInternal::ExplicitValue(true);
-};/*case end*/
-default: {
-return JaktInternal::ExplicitValue(false);
-};/*case end*/
-}/*switch end*/
-}()
-));
-if ((floating && (!(is_float_suffix)))){
-return ( lexer::Token { typename lexer::Token::Garbage(((*this).span(start,((*this).index)))) } );
-}
-return (JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<lexer::Token, ErrorOr<lexer::Token>>{
-auto&& __jakt_match_variant = suffix;
-switch(__jakt_match_variant.index()) {
-case 10: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::F32>();
-return JaktInternal::ExplicitValue(({ Optional<lexer::Token> __jakt_var_4; {
-const f64 number = (lexer::u64_to_float<f64>(total) + (lexer::u64_to_float<f64>(fraction_nominator) / lexer::u64_to_float<f64>(fraction_denominator)));
-__jakt_var_4 = TRY((lexer::make_float_token(number,suffix,((*this).span(start,end))))); goto __jakt_label_2;
-
-}
-__jakt_label_2:; __jakt_var_4.release_value(); }));
-};/*case end*/
-case 11: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::F64>();
-return JaktInternal::ExplicitValue(({ Optional<lexer::Token> __jakt_var_5; {
-const f64 number = (lexer::u64_to_float<f64>(total) + (lexer::u64_to_float<f64>(fraction_nominator) / lexer::u64_to_float<f64>(fraction_denominator)));
-__jakt_var_5 = TRY((lexer::make_float_token(number,suffix,((*this).span(start,end))))); goto __jakt_label_3;
-
-}
-__jakt_label_3:; __jakt_var_5.release_value(); }));
-};/*case end*/
-default: {
-return JaktInternal::ExplicitValue(TRY((((*this).make_integer_token(total,suffix,((*this).span(start,end)))))));
-};/*case end*/
-}/*switch end*/
-}()
-)));
+const lexer::LiteralSuffix suffix = TRY((((*this).consume_numeric_literal_suffix())));
+return ( lexer::Token { typename lexer::Token::Number(prefix,TRY((((number).to_string()))),suffix,((*this).span(start,((*this).index)))) } );
 }
 }
 
@@ -1146,9 +816,9 @@ if (__jakt_enum_value == '=') {
 return JaktInternal::ExplicitValue( lexer::Token { typename lexer::Token::LessThanOrEqual(((*this).span(start,(++(((*this).index)))))) } );
 }
 else if (__jakt_enum_value == '<') {
-return JaktInternal::ExplicitValue(({ Optional<lexer::Token> __jakt_var_6; {
+return JaktInternal::ExplicitValue(({ Optional<lexer::Token> __jakt_var_4; {
 ((((*this).index)++));
-__jakt_var_6 = JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<lexer::Token,lexer::Token>{
+__jakt_var_4 = JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<lexer::Token,lexer::Token>{
 auto __jakt_enum_value = (((*this).peek()));
 if (__jakt_enum_value == '<') {
 return JaktInternal::ExplicitValue( lexer::Token { typename lexer::Token::LeftArithmeticShift(((*this).span(start,(++(((*this).index)))))) } );
@@ -1160,10 +830,10 @@ else {
 return JaktInternal::ExplicitValue( lexer::Token { typename lexer::Token::LeftShift(((*this).span((JaktInternal::checked_sub<size_t>(((*this).index),static_cast<size_t>(1ULL))),((*this).index)))) } );
 }
 }()))
-; goto __jakt_label_4;
+; goto __jakt_label_2;
 
 }
-__jakt_label_4:; __jakt_var_6.release_value(); }));
+__jakt_label_2:; __jakt_var_4.release_value(); }));
 }
 else {
 return JaktInternal::ExplicitValue( lexer::Token { typename lexer::Token::LessThan(((*this).span((JaktInternal::checked_sub<size_t>(((*this).index),static_cast<size_t>(1ULL))),((*this).index)))) } );
@@ -1268,140 +938,60 @@ break;}
 }
 return builder.to_string();
 }
-ErrorOr<String> lexer::NumericConstant::debug_description() const {
-auto builder = TRY(StringBuilder::create());
-switch (this->index()) {case 0 /* I8 */: {
-[[maybe_unused]] auto const& that = this->template get<NumericConstant::I8>();
-TRY(builder.append("NumericConstant::I8"));
-TRY(builder.appendff("({})", that.value));
-break;}
-case 1 /* I16 */: {
-[[maybe_unused]] auto const& that = this->template get<NumericConstant::I16>();
-TRY(builder.append("NumericConstant::I16"));
-TRY(builder.appendff("({})", that.value));
-break;}
-case 2 /* I32 */: {
-[[maybe_unused]] auto const& that = this->template get<NumericConstant::I32>();
-TRY(builder.append("NumericConstant::I32"));
-TRY(builder.appendff("({})", that.value));
-break;}
-case 3 /* I64 */: {
-[[maybe_unused]] auto const& that = this->template get<NumericConstant::I64>();
-TRY(builder.append("NumericConstant::I64"));
-TRY(builder.appendff("({})", that.value));
-break;}
-case 4 /* U8 */: {
-[[maybe_unused]] auto const& that = this->template get<NumericConstant::U8>();
-TRY(builder.append("NumericConstant::U8"));
-TRY(builder.appendff("({})", that.value));
-break;}
-case 5 /* U16 */: {
-[[maybe_unused]] auto const& that = this->template get<NumericConstant::U16>();
-TRY(builder.append("NumericConstant::U16"));
-TRY(builder.appendff("({})", that.value));
-break;}
-case 6 /* U32 */: {
-[[maybe_unused]] auto const& that = this->template get<NumericConstant::U32>();
-TRY(builder.append("NumericConstant::U32"));
-TRY(builder.appendff("({})", that.value));
-break;}
-case 7 /* U64 */: {
-[[maybe_unused]] auto const& that = this->template get<NumericConstant::U64>();
-TRY(builder.append("NumericConstant::U64"));
-TRY(builder.appendff("({})", that.value));
-break;}
-case 8 /* USize */: {
-[[maybe_unused]] auto const& that = this->template get<NumericConstant::USize>();
-TRY(builder.append("NumericConstant::USize"));
-TRY(builder.appendff("({})", that.value));
-break;}
-case 9 /* F32 */: {
-[[maybe_unused]] auto const& that = this->template get<NumericConstant::F32>();
-TRY(builder.append("NumericConstant::F32"));
-TRY(builder.appendff("({})", that.value));
-break;}
-case 10 /* F64 */: {
-[[maybe_unused]] auto const& that = this->template get<NumericConstant::F64>();
-TRY(builder.append("NumericConstant::F64"));
-TRY(builder.appendff("({})", that.value));
-break;}
-case 11 /* UnknownSigned */: {
-[[maybe_unused]] auto const& that = this->template get<NumericConstant::UnknownSigned>();
-TRY(builder.append("NumericConstant::UnknownSigned"));
-TRY(builder.appendff("({})", that.value));
-break;}
-case 12 /* UnknownUnsigned */: {
-[[maybe_unused]] auto const& that = this->template get<NumericConstant::UnknownUnsigned>();
-TRY(builder.append("NumericConstant::UnknownUnsigned"));
-TRY(builder.appendff("({})", that.value));
-break;}
-}
-return builder.to_string();
-}
-size_t lexer::NumericConstant::to_usize() const {
+String lexer::LiteralSuffix::to_string() const {
 {
-return (JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<size_t, size_t>{
+return (JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<String, String>{
 auto&& __jakt_match_variant = *this;
 switch(__jakt_match_variant.index()) {
 case 0: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::NumericConstant::I8>();
-i8 const& num = __jakt_match_value.value;
-return JaktInternal::ExplicitValue((infallible_integer_cast<size_t>((num))));
+auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::None>();
+return JaktInternal::ExplicitValue(String(""));
 };/*case end*/
 case 1: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::NumericConstant::I16>();
-i16 const& num = __jakt_match_value.value;
-return JaktInternal::ExplicitValue((infallible_integer_cast<size_t>((num))));
+auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::UZ>();
+return JaktInternal::ExplicitValue(String("uz"));
 };/*case end*/
 case 2: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::NumericConstant::I32>();
-i32 const& num = __jakt_match_value.value;
-return JaktInternal::ExplicitValue((infallible_integer_cast<size_t>((num))));
+auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::U8>();
+return JaktInternal::ExplicitValue(String("u8"));
 };/*case end*/
 case 3: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::NumericConstant::I64>();
-i64 const& num = __jakt_match_value.value;
-return JaktInternal::ExplicitValue((infallible_integer_cast<size_t>((num))));
+auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::U16>();
+return JaktInternal::ExplicitValue(String("u16"));
 };/*case end*/
 case 4: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::NumericConstant::U8>();
-u8 const& num = __jakt_match_value.value;
-return JaktInternal::ExplicitValue((infallible_integer_cast<size_t>((num))));
+auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::U32>();
+return JaktInternal::ExplicitValue(String("u32"));
 };/*case end*/
 case 5: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::NumericConstant::U16>();
-u16 const& num = __jakt_match_value.value;
-return JaktInternal::ExplicitValue((infallible_integer_cast<size_t>((num))));
+auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::U64>();
+return JaktInternal::ExplicitValue(String("u64"));
 };/*case end*/
 case 6: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::NumericConstant::U32>();
-u32 const& num = __jakt_match_value.value;
-return JaktInternal::ExplicitValue((infallible_integer_cast<size_t>((num))));
+auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::I8>();
+return JaktInternal::ExplicitValue(String("i8"));
 };/*case end*/
 case 7: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::NumericConstant::U64>();
-u64 const& num = __jakt_match_value.value;
-return JaktInternal::ExplicitValue((infallible_integer_cast<size_t>((num))));
+auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::I16>();
+return JaktInternal::ExplicitValue(String("i16"));
 };/*case end*/
 case 8: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::NumericConstant::USize>();
-u64 const& num = __jakt_match_value.value;
-return JaktInternal::ExplicitValue((infallible_integer_cast<size_t>((num))));
+auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::I32>();
+return JaktInternal::ExplicitValue(String("i32"));
+};/*case end*/
+case 9: {
+auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::I64>();
+return JaktInternal::ExplicitValue(String("i64"));
+};/*case end*/
+case 10: {
+auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::F32>();
+return JaktInternal::ExplicitValue(String("f32"));
 };/*case end*/
 case 11: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::NumericConstant::UnknownSigned>();
-i64 const& num = __jakt_match_value.value;
-return JaktInternal::ExplicitValue((infallible_integer_cast<size_t>((num))));
+auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralSuffix::F64>();
+return JaktInternal::ExplicitValue(String("f64"));
 };/*case end*/
-case 12: {
-auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::NumericConstant::UnknownUnsigned>();
-u64 const& num = __jakt_match_value.value;
-return JaktInternal::ExplicitValue((infallible_integer_cast<size_t>((num))));
-};/*case end*/
-default: {
-return JaktInternal::ExplicitValue((infallible_integer_cast<size_t>((static_cast<i64>(0LL)))));
-};/*case end*/
-}/*switch end*/
+default: VERIFY_NOT_REACHED();}/*switch end*/
 }()
 )));
 }
@@ -1458,7 +1048,13 @@ TRY(builder.append("("));
 {
 JaktInternal::PrettyPrint::ScopedLevelIncrease increase_indent {};
 TRY(JaktInternal::PrettyPrint::output_indentation(builder));
-TRY(builder.appendff("number: {}", that.number));
+TRY(builder.appendff("prefix: {}", that.prefix));
+TRY(builder.append(", "));
+TRY(JaktInternal::PrettyPrint::output_indentation(builder));
+TRY(builder.appendff("number: \"{}\"", that.number));
+TRY(builder.append(", "));
+TRY(JaktInternal::PrettyPrint::output_indentation(builder));
+TRY(builder.appendff("suffix: {}", that.suffix));
 TRY(builder.append(", "));
 TRY(JaktInternal::PrettyPrint::output_indentation(builder));
 TRY(builder.appendff("span: {}", that.span));
@@ -2664,6 +2260,54 @@ case 104: {
 auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::Token::Garbage>();
 utility::Span const& span = __jakt_match_value.value;
 return JaktInternal::ExplicitValue(span);
+};/*case end*/
+default: VERIFY_NOT_REACHED();}/*switch end*/
+}()
+)));
+}
+}
+
+ErrorOr<String> lexer::LiteralPrefix::debug_description() const {
+auto builder = TRY(StringBuilder::create());
+switch (this->index()) {case 0 /* None */: {
+[[maybe_unused]] auto const& that = this->template get<LiteralPrefix::None>();
+TRY(builder.append("LiteralPrefix::None"));
+break;}
+case 1 /* Hexadecimal */: {
+[[maybe_unused]] auto const& that = this->template get<LiteralPrefix::Hexadecimal>();
+TRY(builder.append("LiteralPrefix::Hexadecimal"));
+break;}
+case 2 /* Octal */: {
+[[maybe_unused]] auto const& that = this->template get<LiteralPrefix::Octal>();
+TRY(builder.append("LiteralPrefix::Octal"));
+break;}
+case 3 /* Binary */: {
+[[maybe_unused]] auto const& that = this->template get<LiteralPrefix::Binary>();
+TRY(builder.append("LiteralPrefix::Binary"));
+break;}
+}
+return builder.to_string();
+}
+String lexer::LiteralPrefix::to_string() const {
+{
+return (JAKT_RESOLVE_EXPLICIT_VALUE_OR_CONTROL_FLOW_RETURN_ONLY(([&]() -> JaktInternal::ExplicitValueOrControlFlow<String, String>{
+auto&& __jakt_match_variant = *this;
+switch(__jakt_match_variant.index()) {
+case 0: {
+auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralPrefix::None>();
+return JaktInternal::ExplicitValue(String(""));
+};/*case end*/
+case 1: {
+auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralPrefix::Hexadecimal>();
+return JaktInternal::ExplicitValue(String("0x"));
+};/*case end*/
+case 2: {
+auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralPrefix::Octal>();
+return JaktInternal::ExplicitValue(String("0o"));
+};/*case end*/
+case 3: {
+auto&& __jakt_match_value = __jakt_match_variant.template get<typename lexer::LiteralPrefix::Binary>();
+return JaktInternal::ExplicitValue(String("0b"));
 };/*case end*/
 default: VERIFY_NOT_REACHED();}/*switch end*/
 }()

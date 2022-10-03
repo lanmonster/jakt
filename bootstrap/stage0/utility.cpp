@@ -1,6 +1,12 @@
 #include "utility.h"
 namespace Jakt {
 namespace utility {
+bool is_ascii_binary(const u8 c) {
+{
+return (((c == '0') || (c == '1')));
+}
+}
+
 String join(const JaktInternal::Array<String> strings,const String separator) {
 {
 String output = String("");
@@ -28,6 +34,18 @@ return (output);
 }
 }
 
+bool is_whitespace(const u8 byte) {
+{
+return ((((byte == ' ') || (byte == '\t')) || (byte == '\r')));
+}
+}
+
+bool is_ascii_alpha(const u8 c) {
+{
+return ((((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z'))));
+}
+}
+
 ErrorOr<JaktInternal::Array<String>> prepend_to_each(const JaktInternal::Array<String> strings,const String prefix) {
 {
 JaktInternal::Array<String> output = (TRY((Array<String>::create_with({}))));
@@ -50,10 +68,22 @@ return (output);
 }
 }
 
+bool is_ascii_digit(const u8 c) {
+{
+return (((c >= '0') && (c <= '9')));
+}
+}
+
 void todo(const String message) {
 {
 warnln(String("TODO: {}"),message);
 abort();
+}
+}
+
+bool is_ascii_alphanumeric(const u8 c) {
+{
+return ((utility::is_ascii_alpha(c) || utility::is_ascii_digit(c)));
 }
 }
 
@@ -158,6 +188,18 @@ return (output);
 }
 }
 
+bool is_ascii_octdigit(const u8 c) {
+{
+return (((c >= '0') && (c <= '7')));
+}
+}
+
+bool is_ascii_hexdigit(const u8 c) {
+{
+return (((((c >= '0') && (c <= '9')) || ((c >= 'a') && (c <= 'f'))) || ((c >= 'A') && (c <= 'F'))));
+}
+}
+
 [[noreturn]] void panic(const String message) {
 {
 warnln(String("internal error: {}"),message);
@@ -249,96 +291,6 @@ return ((((*this).id) == ((rhs).id)));
 }
 
 utility::FileId::FileId(size_t a_id) :id(a_id){}
-
-ErrorOr<String> utility::FilePath::debug_description() const { auto builder = MUST(StringBuilder::create());TRY(builder.append("FilePath("));{
-JaktInternal::PrettyPrint::ScopedLevelIncrease increase_indent {};
-TRY(JaktInternal::PrettyPrint::output_indentation(builder));TRY(builder.append("path: "));TRY(builder.appendff("\"{}\"", path));
-}
-TRY(builder.append(")"));return builder.to_string(); }
-ErrorOr<NonnullRefPtr<utility::FilePath>> utility::FilePath::make(const String filepath) {
-{
-return (TRY((utility::FilePath::create(filepath))));
-}
-}
-
-ErrorOr<JaktInternal::Tuple<String,String>> utility::FilePath::split_at_last_slash() const {
-{
-const size_t len = ((((*this).path)).length());
-const JaktInternal::Optional<size_t> last_slash = utility::FilePath::last_slash(((*this).path));
-if (((last_slash).has_value())){
-const String dir = TRY((((((*this).path)).substring(static_cast<size_t>(0ULL),(last_slash.value())))));
-const String base = TRY((((((*this).path)).substring((JaktInternal::checked_add<size_t>((last_slash.value()),static_cast<size_t>(1ULL))),(JaktInternal::checked_sub<size_t>((JaktInternal::checked_sub<size_t>(len,(last_slash.value()))),static_cast<size_t>(1ULL)))))));
-return ((Tuple{dir, base}));
-}
-return ((Tuple{String(""), ((*this).path)}));
-}
-}
-
-ErrorOr<String> utility::FilePath::dirname() const {
-{
-const JaktInternal::Tuple<String,String> parts = TRY((((*this).split_at_last_slash())));
-if ((((parts).get<0>()) == String(""))){
-return (String("."));
-}
-return (((parts).get<0>()));
-}
-}
-
-utility::FilePath::FilePath(String&& a_path): path(move(a_path)){}
-ErrorOr<NonnullRefPtr<FilePath>> utility::FilePath::create(String path) { auto o = TRY(adopt_nonnull_ref_or_enomem(new (nothrow) FilePath (move(path)))); return o; }
-JaktInternal::Optional<size_t> utility::FilePath::last_slash(const String path) {
-{
-size_t i = (JaktInternal::checked_sub<size_t>(((path).length()),static_cast<size_t>(1ULL)));
-while (((i >= static_cast<size_t>(1ULL)) && (((path).byte_at(i)) != '/'))){
-((i--));
-}
-if (((i == static_cast<size_t>(0ULL)) && (((path).byte_at(i)) != '/'))){
-return (JaktInternal::OptionalNone());
-}
-return (i);
-}
-}
-
-ErrorOr<String> utility::FilePath::basename(const bool strip_extension) const {
-{
-const JaktInternal::Tuple<String,String> parts = TRY((((*this).split_at_last_slash())));
-if (strip_extension){
-size_t ext_length = ((TRY((((*this).ext())))).length());
-if ((ext_length > static_cast<size_t>(0ULL))){
-({auto& _jakt_ref = ext_length;_jakt_ref = JaktInternal::checked_add<size_t>(_jakt_ref, static_cast<size_t>(1ULL));});
-}
-return (TRY((((((parts).get<1>())).substring(static_cast<size_t>(0ULL),(JaktInternal::checked_sub<size_t>(((((parts).get<1>())).length()),ext_length)))))));
-}
-return (((parts).get<1>()));
-}
-}
-
-ErrorOr<String> utility::FilePath::ext() const {
-{
-{
-JaktInternal::Range<size_t> _magic = (((JaktInternal::Range<size_t>{static_cast<size_t>((JaktInternal::checked_sub<size_t>(((((*this).path)).length()),static_cast<size_t>(1ULL)))),static_cast<size_t>(static_cast<size_t>(0ULL))})).inclusive());
-for (;;){
-JaktInternal::Optional<size_t> _magic_value = ((_magic).next());
-if ((!(((_magic_value).has_value())))){
-break;
-}
-size_t i = (_magic_value.value());
-{
-const u8 c = ((((*this).path)).byte_at(i));
-if ((c == '/')){
-break;
-}
-if ((c == '.')){
-return (TRY((((((*this).path)).substring((JaktInternal::checked_add<size_t>(i,static_cast<size_t>(1ULL))),(JaktInternal::checked_sub<size_t>((JaktInternal::checked_sub<size_t>(((((*this).path)).length()),static_cast<size_t>(1ULL))),i)))))));
-}
-}
-
-}
-}
-
-return (String(""));
-}
-}
 
 ErrorOr<String> utility::ArgsParser::debug_description() const { auto builder = MUST(StringBuilder::create());TRY(builder.append("ArgsParser("));{
 JaktInternal::PrettyPrint::ScopedLevelIncrease increase_indent {};

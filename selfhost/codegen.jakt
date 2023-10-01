@@ -4909,6 +4909,7 @@ struct CodeGenerator {
                 first = false
             }
 
+            // 1486 bug is here
             output += param.variable.name_for_codegen().as_name_for_use()
             output += "(move(a_"
             output += param.variable.name_for_codegen().as_name_for_use()

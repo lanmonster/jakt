@@ -40,19 +40,7 @@ import * as path from "path";
 import { TextEncoder, promisify } from "node:util";
 import { exec as execWithCallback } from "node:child_process";
 import { fileURLToPath } from "node:url";
-
-interface JaktTextDocument extends TextDocument {
-    jaktInlayHints?: InlayHint[];
-}
-
-interface JaktSymbol {
-    name: string;
-    detail?: string;
-    kind: "namespace" | "function" | "method" | "struct" | "class" | "enum" | "enum-member";
-    range: { start: number; end: number };
-    selection_range: { start: number; end: number };
-    children: JaktSymbol[];
-}
+import { JaktSymbol, JaktTextDocument, Settings } from "./types";
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -331,24 +319,10 @@ connection.onHover(async (request: HoverParams) => {
     });
 });
 
-// The example settings
-interface ExampleSettings {
-    maxNumberOfProblems: number;
-    maxCompilerInvocationTime: number;
-    extraCompilerImportPaths: Array<string>;
-    compiler: {
-        executablePath: string;
-    };
-    hints: {
-        showImplicitTry: boolean;
-        showInferredTypes: boolean;
-    };
-}
-
 // The global settings, used when the `workspace/configuration` request is not supported by the client.
 // Please note that this is not the case when using this server with the client provided in this example
 // but could happen with other clients.
-const defaultSettings: ExampleSettings = {
+const defaultSettings: Settings = {
     maxNumberOfProblems: 1000,
     maxCompilerInvocationTime: 5000,
     extraCompilerImportPaths: [],
@@ -356,10 +330,10 @@ const defaultSettings: ExampleSettings = {
     hints: { showImplicitTry: true, showInferredTypes: true },
 };
 
-let globalSettings: ExampleSettings = defaultSettings;
+let globalSettings: Settings = defaultSettings;
 
 // Cache the settings of all open documents
-const documentSettings: Map<string, Thenable<ExampleSettings>> = new Map();
+const documentSettings: Map<string, Thenable<Settings>> = new Map();
 
 connection.onDidChangeConfiguration(change => {
     // connection.console.log("onDidChangeConfiguration, hasConfigurationCapability: " + hasConfigurationCapability);
@@ -368,14 +342,14 @@ connection.onDidChangeConfiguration(change => {
         // Reset all cached document settings
         documentSettings.clear();
     } else {
-        globalSettings = <ExampleSettings>(change.settings.jaktLanguageServer || defaultSettings);
+        globalSettings = <Settings>(change.settings.jaktLanguageServer || defaultSettings);
     }
 
     // Revalidate all open text documents
     documents.all().forEach(validateTextDocument);
 });
 
-function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
+function getDocumentSettings(resource: string): Thenable<Settings> {
     if (!hasConfigurationCapability) {
         return Promise.resolve(globalSettings);
     }
@@ -492,7 +466,7 @@ function convertPosition(position: Position, text: string): number {
 async function runCompiler(
     text: string,
     flags: string,
-    settings: ExampleSettings,
+    settings: Settings,
     options: { allowErrors?: boolean } = {},
     path?: string
 ): Promise<string> {

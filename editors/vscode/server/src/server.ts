@@ -122,7 +122,6 @@ connection.onInitialize((params: InitializeParams) => {
         };
     }
 
-    // connection.console.log('Jakt language server initialized');
     return result;
 });
 
@@ -130,12 +129,6 @@ connection.onInitialized(() => {
     if (capabilities.hasConfigurationCapability) {
         // Register for all configuration changes.
         connection.client.register(DidChangeConfigurationNotification.type, undefined);
-    }
-    if (capabilities.hasWorkspaceFolderCapability) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        connection.workspace.onDidChangeWorkspaceFolders(_event => {
-            // connection.console.log('Workspace folder change event received.');
-        });
     }
 });
 
@@ -147,8 +140,6 @@ async function goToDefinition(
         const lines = jaktOutput.split("\n").filter(l => l.length > 0);
         for (const line of lines) {
             const obj = JSON.parse(line);
-            // connection.console.log("going to type definition");
-            // connection.console.log(obj);
             if (obj.file === "" || obj.file === "__prelude__") return;
 
             const lineBreaks = findLineBreaks(
@@ -229,9 +220,6 @@ connection.onDefinition(async request => {
 
             const text = document.getText();
 
-            // connection.console.log("request: ");
-            // connection.console.log(request.textDocument.uri);
-            // connection.console.log("index: " + convertPosition(request.position, text));
             const stdout = await runCompiler(
                 text,
                 "-g " +
@@ -255,9 +243,6 @@ connection.onTypeDefinition(async (request: TypeDefinitionParams) => {
             const settings = await getDocumentSettings(request.textDocument.uri);
 
             const text = document.getText();
-            // connection.console.log("request: ");
-            // connection.console.log(request.textDocument.uri);
-            // connection.console.log("index: " + convertPosition(request.position, text));
             const stdout = await runCompiler(
                 text,
                 "-t " +
@@ -281,9 +266,6 @@ connection.onHover(async (request: HoverParams) => {
 
         if (!(typeof text == "string")) return null;
 
-        // connection.console.log("request: ");
-        // connection.console.log(request.textDocument.uri);
-        // connection.console.log("index: " + convertPosition(request.position, text));
         const stdout = await runCompiler(
             text,
             "-e " +
@@ -297,8 +279,6 @@ connection.onHover(async (request: HoverParams) => {
         const lines = stdout.split("\n").filter(l => l.length > 0);
         for (const line of lines) {
             const obj = JSON.parse(line);
-            // connection.console.log("hovering");
-            // connection.console.log(obj);
 
             // FIXME: Figure out how to import `vscode` package in server.ts without
             // getting runtime import errors to remove this deprication warning.
@@ -331,8 +311,6 @@ let globalSettings: Settings = defaultSettings;
 const documentSettings: Map<string, Thenable<Settings>> = new Map();
 
 connection.onDidChangeConfiguration(change => {
-    // connection.console.log("onDidChangeConfiguration, hasConfigurationCapability: " + hasConfigurationCapability);
-    // connection.console.log("change is " + JSON.stringify(change));
     if (capabilities.hasConfigurationCapability) {
         // Reset all cached document settings
         documentSettings.clear();
@@ -554,7 +532,6 @@ async function validateTextDocument(textDocument: JaktTextDocument): Promise<voi
 
         const lines = stdout.split("\n").filter(l => l.length > 0);
         for (const line of lines) {
-            // connection.console.log(line);
             try {
                 const obj = JSON.parse(line);
 
@@ -592,8 +569,6 @@ async function validateTextDocument(textDocument: JaktTextDocument): Promise<voi
                         message: obj.message,
                         source: textDocument.uri,
                     };
-
-                    // connection.console.log(diagnostic.message);
 
                     diagnostics.push(diagnostic);
                 } else if (obj.type == "hint" && settings.hints.showInferredTypes) {
@@ -654,10 +629,7 @@ connection.onCompletion(async (request: TextDocumentPositionParams): Promise<Com
             const text = document?.getText();
 
             if (typeof text == "string") {
-                // connection.console.log("completion request: ");
-                // connection.console.log(request.textDocument.uri);
                 const index = convertPosition(request.position, text) - 1;
-                // connection.console.log("index: " + index);
                 const stdout = await runCompiler(
                     text,
                     "-m " + index + includeFlagForPath(request.textDocument.uri),
@@ -665,13 +637,10 @@ connection.onCompletion(async (request: TextDocumentPositionParams): Promise<Com
                     {},
                     document ? fileURLToPath(document.uri) : undefined
                 );
-                // connection.console.log("got: " + stdout);
 
                 const lines = stdout.split("\n").filter(l => l.length > 0);
                 for (const line of lines) {
                     const obj = JSON.parse(line);
-                    // connection.console.log("completions");
-                    // connection.console.log(obj);
 
                     const output = [];
                     let index = 1;

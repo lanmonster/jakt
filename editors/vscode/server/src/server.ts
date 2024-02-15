@@ -88,7 +88,6 @@ connection.onInitialize((params: InitializeParams) => {
         };
     }
 
-    // connection.console.log('Jakt language server initialized');
     return result;
 });
 
@@ -96,12 +95,6 @@ connection.onInitialized(() => {
     if (hasConfigurationCapability) {
         // Register for all configuration changes.
         connection.client.register(DidChangeConfigurationNotification.type, undefined);
-    }
-    if (hasWorkspaceFolderCapability) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        connection.workspace.onDidChangeWorkspaceFolders(_event => {
-            // connection.console.log('Workspace folder change event received.');
-        });
     }
 });
 
@@ -161,9 +154,6 @@ connection.onDefinition(async request => {
 
         const text = document.getText();
 
-        // connection.console.log("request: ");
-        // connection.console.log(request.textDocument.uri);
-        // connection.console.log("index: " + convertPositionToIndex(request.position, text));
         const stdout = await runCompiler(
             connection,
             text,
@@ -185,9 +175,6 @@ connection.onTypeDefinition(async (request: TypeDefinitionParams) => {
         const settings = await getDocumentSettings(request.textDocument.uri);
 
         const text = document.getText();
-        // connection.console.log("request: ");
-        // connection.console.log(request.textDocument.uri);
-        // connection.console.log("index: " + convertPositionToIndex(request.position, text));
         const stdout = await runCompiler(
             connection,
             text,
@@ -211,9 +198,6 @@ connection.onHover(async (request: HoverParams) => {
 
         if (!(typeof text == "string")) return null;
 
-        // connection.console.log("request: ");
-        // connection.console.log(request.textDocument.uri);
-        // connection.console.log("index: " + convertPositionToIndex(request.position, text));
         const stdout = await runCompiler(
             connection,
             text,
@@ -228,8 +212,6 @@ connection.onHover(async (request: HoverParams) => {
         const lines = stdout.split("\n").filter(l => l.length > 0);
         for (const line of lines) {
             const obj = JSON.parse(line);
-            // connection.console.log("hovering");
-            // connection.console.log(obj);
 
             // FIXME: Figure out how to import `vscode` package in server.ts without
             // getting runtime import errors to remove this deprication warning.
@@ -262,8 +244,6 @@ let globalSettings: Settings = defaultSettings;
 const documentSettings: Map<string, Thenable<Settings>> = new Map();
 
 connection.onDidChangeConfiguration(change => {
-    // connection.console.log("onDidChangeConfiguration, hasConfigurationCapability: " + hasConfigurationCapability);
-    // connection.console.log("change is " + JSON.stringify(change));
     if (hasConfigurationCapability) {
         // Reset all cached document settings
         documentSettings.clear();
@@ -333,10 +313,7 @@ connection.onCompletion(async (request: TextDocumentPositionParams): Promise<Com
         const text = document?.getText();
 
         if (typeof text == "string") {
-            // connection.console.log("completion request: ");
-            // connection.console.log(request.textDocument.uri);
             const index = convertPositionToIndex(request.position, text) - 1;
-            // connection.console.log("index: " + index);
             const stdout = await runCompiler(
                 connection,
                 text,
@@ -345,13 +322,10 @@ connection.onCompletion(async (request: TextDocumentPositionParams): Promise<Com
                 {},
                 document ? fileURLToPath(document.uri) : undefined
             );
-            // connection.console.log("got: " + stdout);
 
             const lines = stdout.split("\n").filter(l => l.length > 0);
             for (const line of lines) {
                 const obj = JSON.parse(line);
-                // connection.console.log("completions");
-                // connection.console.log(obj);
 
                 const output = [];
                 let index = 1;

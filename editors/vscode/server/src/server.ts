@@ -25,6 +25,22 @@ import {
 
 import { TextDocument } from "vscode-languageserver-textdocument";
 
+import {
+    Position,
+    InlayHint,
+    InlayHintParams,
+    InlayHintLabelPart,
+    InlayHintKind,
+} from "vscode-languageserver-protocol";
+
+import * as fs from "fs";
+import * as tmp from "tmp";
+import * as path from "path";
+
+import { TextEncoder, promisify } from "node:util";
+import { exec as execWithCallback } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
 interface JaktTextDocument extends TextDocument {
     jaktInlayHints?: InlayHint[];
 }
@@ -38,14 +54,6 @@ interface JaktSymbol {
     children: JaktSymbol[];
 }
 
-import {
-    Position,
-    InlayHint,
-    InlayHintParams,
-    InlayHintLabelPart,
-    InlayHintKind,
-} from "vscode-languageserver-protocol";
-
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = createConnection(ProposedFeatures.all);
@@ -57,16 +65,7 @@ let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 let hasDiagnosticRelatedInformationCapability = false;
 
-import fs = require("fs");
-import tmp = require("tmp");
-import path = require("path");
-
-import util = require("node:util");
-import { TextEncoder } from "node:util";
-import { fileURLToPath } from "node:url";
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const exec = util.promisify(require("node:child_process").exec);
+const exec = promisify(execWithCallback);
 
 const tmpFile = tmp.fileSync();
 
@@ -376,7 +375,6 @@ connection.onDidChangeConfiguration(change => {
     documents.all().forEach(validateTextDocument);
 });
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
     if (!hasConfigurationCapability) {
         return Promise.resolve(globalSettings);
@@ -518,12 +516,9 @@ async function runCompiler(
 
     let stdout = "";
     try {
-        const output = await exec(
-            command,
-            {
-                timeout: settings.maxCompilerInvocationTime,
-            }
-        );
+        const output = await exec(command, {
+            timeout: settings.maxCompilerInvocationTime,
+        });
         stdout = output.stdout;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {

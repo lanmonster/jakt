@@ -41,6 +41,7 @@ import { TextEncoder, promisify } from "node:util";
 import { exec as execWithCallback } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { JaktSymbol, JaktTextDocument, Settings } from "./types";
+import { capabilities } from "./capabilities";
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -48,10 +49,6 @@ const connection = createConnection(ProposedFeatures.all);
 
 // Create a simple text document manager.
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
-
-let hasConfigurationCapability = false;
-let hasWorkspaceFolderCapability = false;
-let hasDiagnosticRelatedInformationCapability = false;
 
 const exec = promisify(execWithCallback);
 
@@ -84,20 +81,18 @@ async function durationLogWrapper<T>(label: string, fn: () => Promise<T>): Promi
 }
 
 connection.onInitialize((params: InitializeParams) => {
-    const capabilities = params.capabilities;
-
     // Does the client support the `workspace/configuration` request?
     // If not, we fall back using global settings.
-    hasConfigurationCapability = !!(
-        capabilities.workspace && !!capabilities.workspace.configuration
+    capabilities.hasConfigurationCapability = !!(
+        params.capabilities.workspace && !!params.capabilities.workspace.configuration
     );
-    hasWorkspaceFolderCapability = !!(
-        capabilities.workspace && !!capabilities.workspace.workspaceFolders
+    capabilities.hasWorkspaceFolderCapability = !!(
+        params.capabilities.workspace && !!params.capabilities.workspace.workspaceFolders
     );
-    hasDiagnosticRelatedInformationCapability = !!(
-        capabilities.textDocument &&
-        capabilities.textDocument.publishDiagnostics &&
-        capabilities.textDocument.publishDiagnostics.relatedInformation
+    capabilities.hasDiagnosticRelatedInformationCapability = !!(
+        params.capabilities.textDocument &&
+        params.capabilities.textDocument.publishDiagnostics &&
+        params.capabilities.textDocument.publishDiagnostics.relatedInformation
     );
 
     const result: InitializeResult = {
@@ -119,7 +114,7 @@ connection.onInitialize((params: InitializeParams) => {
             documentRangeFormattingProvider: true,
         },
     };
-    if (hasWorkspaceFolderCapability) {
+    if (capabilities.hasWorkspaceFolderCapability) {
         result.capabilities.workspace = {
             workspaceFolders: {
                 supported: true,
@@ -132,11 +127,11 @@ connection.onInitialize((params: InitializeParams) => {
 });
 
 connection.onInitialized(() => {
-    if (hasConfigurationCapability) {
+    if (capabilities.hasConfigurationCapability) {
         // Register for all configuration changes.
         connection.client.register(DidChangeConfigurationNotification.type, undefined);
     }
-    if (hasWorkspaceFolderCapability) {
+    if (capabilities.hasWorkspaceFolderCapability) {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         connection.workspace.onDidChangeWorkspaceFolders(_event => {
             // connection.console.log('Workspace folder change event received.');
@@ -338,7 +333,7 @@ const documentSettings: Map<string, Thenable<Settings>> = new Map();
 connection.onDidChangeConfiguration(change => {
     // connection.console.log("onDidChangeConfiguration, hasConfigurationCapability: " + hasConfigurationCapability);
     // connection.console.log("change is " + JSON.stringify(change));
-    if (hasConfigurationCapability) {
+    if (capabilities.hasConfigurationCapability) {
         // Reset all cached document settings
         documentSettings.clear();
     } else {
@@ -350,7 +345,7 @@ connection.onDidChangeConfiguration(change => {
 });
 
 function getDocumentSettings(resource: string): Thenable<Settings> {
-    if (!hasConfigurationCapability) {
+    if (!capabilities.hasConfigurationCapability) {
         return Promise.resolve(globalSettings);
     }
     let result = documentSettings.get(resource);
@@ -528,7 +523,7 @@ function findLineBreaks(utf16_text: string): Array<number> {
 
 async function validateTextDocument(textDocument: JaktTextDocument): Promise<void> {
     return await durationLogWrapper(`validateTextDocument ${textDocument.uri}`, async () => {
-        if (!hasDiagnosticRelatedInformationCapability) {
+        if (!capabilities.hasDiagnosticRelatedInformationCapability) {
             console.error("Trying to validate a document with no diagnostic capability");
             return;
         }

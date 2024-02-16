@@ -4,7 +4,6 @@
  * ------------------------------------------------------------------------------------------ */
 import {
     createConnection,
-    TextDocuments,
     ProposedFeatures,
     InitializeParams,
     DidChangeConfigurationNotification,
@@ -21,25 +20,22 @@ import {
 import { InlayHintParams } from "vscode-languageserver-protocol";
 import { fileURLToPath } from "node:url";
 
-import { JaktSymbol, JaktTextDocument, Settings } from "./types";
+import { JaktSymbol, JaktTextDocument } from "./types";
 import convertSpan from "./utils/convertSpan";
-import throttle from "./utils/throttle";
 import findLineBreaks from "./utils/findLineBreaks";
 import includeFlagForPath from "./utils/includeFlagForPath";
 import logDuration from "./utils/logDuration";
 import convertPositionToIndex from "./utils/convertPositionToIndex";
 import runCompiler from "./utils/runCompiler";
 import clickableFilePosition from "./utils/clickableFilePosition";
-import { validateTextDocument } from "./utils/validateTextDocument";
 import goToDefinition from "./utils/goToDefinition";
 import { capabilities } from "./capabilities";
+import { getDocumentManager } from "./documents";
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = createConnection(ProposedFeatures.all);
-
-// Create a simple text document manager.
-const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
+const documentsManager = getDocumentManager(connection);
 
 connection.onInitialize((params: InitializeParams) => {
     // Does the client support the `workspace/configuration` request?
@@ -95,9 +91,9 @@ connection.onInitialized(() => {
 
 connection.onDocumentSymbol(async (request): Promise<DocumentSymbol[]> => {
     return await logDuration(`onDocumentSymbol`, async () => {
-        const settings = await getDocumentSettings(request.textDocument.uri);
-        const document = documents.get(request.textDocument.uri);
-        if (!document) return [];
+        const documentAndSettings = await documentsManager.get(request.textDocument.uri);
+        if (!documentAndSettings) return [];
+        const { document, settings } = documentAndSettings;
 
         const text = document.getText();
         const lineBreaks = findLineBreaks(text);
@@ -143,9 +139,9 @@ connection.onDocumentSymbol(async (request): Promise<DocumentSymbol[]> => {
 
 connection.onDefinition(async request => {
     return await logDuration(`onDefinition ${clickableFilePosition(request)}`, async () => {
-        const document = documents.get(request.textDocument.uri);
-        if (!document) return;
-        const settings = await getDocumentSettings(request.textDocument.uri);
+        const documentAndSettings = await documentsManager.get(request.textDocument.uri);
+        if (!documentAndSettings) return;
+        const { document, settings } = documentAndSettings;
 
         const text = document.getText();
 
@@ -165,9 +161,9 @@ connection.onDefinition(async request => {
 
 connection.onTypeDefinition(async (request: TypeDefinitionParams) => {
     return await logDuration(`onTypeDefinition ${clickableFilePosition(request)}`, async () => {
-        const document = documents.get(request.textDocument.uri);
-        if (!document) return;
-        const settings = await getDocumentSettings(request.textDocument.uri);
+        const documentAndSettings = await documentsManager.get(request.textDocument.uri);
+        if (!documentAndSettings) return;
+        const { document, settings } = documentAndSettings;
 
         const text = document.getText();
         const stdout = await runCompiler(
@@ -186,10 +182,11 @@ connection.onTypeDefinition(async (request: TypeDefinitionParams) => {
 
 connection.onHover(async (request: HoverParams) => {
     return await logDuration(`onHover ${clickableFilePosition(request)}`, async () => {
-        const document = documents.get(request.textDocument.uri);
-        const settings = await getDocumentSettings(request.textDocument.uri);
+        const documentAndSettings = await documentsManager.get(request.textDocument.uri);
+        if (!documentAndSettings) return;
+        const { document, settings } = documentAndSettings;
 
-        const text = document?.getText();
+        const text = document.getText();
 
         if (!(typeof text == "string")) return null;
 
@@ -222,72 +219,7 @@ connection.onHover(async (request: HoverParams) => {
     });
 });
 
-// The global settings, used when the `workspace/configuration` request is not supported by the client.
-// Please note that this is not the case when using this server with the client provided in this example
-// but could happen with other clients.
-const defaultSettings: Settings = {
-    maxNumberOfProblems: 1000,
-    maxCompilerInvocationTime: 5000,
-    extraCompilerImportPaths: [],
-    compiler: { executablePath: "jakt" },
-    hints: { showImplicitTry: true, showInferredTypes: true },
-};
-
-let globalSettings: Settings = defaultSettings;
-
-// Cache the settings of all open documents
-const documentSettings: Map<string, Thenable<Settings>> = new Map();
-
-connection.onDidChangeConfiguration(change => {
-    if (capabilities.hasConfigurationCapability) {
-        // Reset all cached document settings
-        documentSettings.clear();
-    } else {
-        globalSettings = <Settings>(change.settings.jaktLanguageServer || defaultSettings);
-    }
-
-    // Revalidate all open text documents
-    documents
-        .all()
-        .forEach(async document =>
-            validateTextDocument(connection, document, await getDocumentSettings(document.uri))
-        );
-});
-
-function getDocumentSettings(resource: string): Thenable<Settings> {
-    if (!capabilities.hasConfigurationCapability) {
-        return Promise.resolve(globalSettings);
-    }
-    let result = documentSettings.get(resource);
-    if (!result) {
-        result = connection.workspace.getConfiguration({
-            scopeUri: resource,
-            section: "jaktLanguageServer",
-        });
-        documentSettings.set(resource, result);
-    }
-    return result;
-}
-
-// Only keep settings for open documents
-documents.onDidClose(e => {
-    documentSettings.delete(e.document.uri);
-});
-
-// The content of a text document has changed. This event is emitted
-// when the text document first opened or when its content has changed.
-documents.onDidChangeContent(
-    (() => {
-        const throttledValidateTextDocument = throttle(validateTextDocument, 500);
-        return async change => {
-            throttledValidateTextDocument(
-                connection,
-                change.document,
-                await getDocumentSettings(change.document.uri)
-            );
-        };
-    })()
-);
+connection.onDidChangeConfiguration(change => documentsManager.onDidChangeConfiguration(change));
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 connection.onDidChangeWatchedFiles(_change => {
@@ -302,10 +234,11 @@ connection.onCompletion(async (request: TextDocumentPositionParams): Promise<Com
         // which code complete got requested. For the example we ignore this
         // info and always provide the same completion items.
 
-        const document = documents.get(request.textDocument.uri);
-        const settings = await getDocumentSettings(request.textDocument.uri);
+        const documentAndSettings = await documentsManager.get(request.textDocument.uri);
+        if (!documentAndSettings) return [];
+        const { document, settings } = documentAndSettings;
 
-        const text = document?.getText();
+        const text = document.getText();
 
         if (typeof text == "string") {
             const index = convertPositionToIndex(request.position, text) - 1;
@@ -344,10 +277,9 @@ connection.onCompletion(async (request: TextDocumentPositionParams): Promise<Com
 
 connection.onDocumentFormatting(async params => {
     return await logDuration(`onDocumentFormatting`, async () => {
-        const document = documents.get(params.textDocument.uri);
-        const settings = await getDocumentSettings(params.textDocument.uri);
-
-        if (document === undefined) return [];
+        const documentAndSettings = await documentsManager.get(params.textDocument.uri);
+        if (!documentAndSettings) return [];
+        const { document, settings } = documentAndSettings;
 
         const text = document.getText();
 
@@ -377,10 +309,11 @@ connection.onDocumentFormatting(async params => {
 
 connection.onDocumentRangeFormatting(async params => {
     return await logDuration(`onDocumentRangeFormatting`, async () => {
-        const document = documents.get(params.textDocument.uri);
-        const settings = await getDocumentSettings(params.textDocument.uri);
+        const documentAndSettings = await documentsManager.get(params.textDocument.uri);
+        if (!documentAndSettings) return [];
+        const { document, settings } = documentAndSettings;
 
-        const text = document?.getText();
+        const text = document.getText();
 
         if (typeof text == "string") {
             const stdout = await runCompiler(
@@ -421,14 +354,11 @@ connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
     return item;
 });
 
-connection.languages.inlayHint.on((params: InlayHintParams) => {
-    const document = documents.get(params.textDocument.uri) as JaktTextDocument;
-    return document.jaktInlayHints;
+connection.languages.inlayHint.on(async (params: InlayHintParams) => {
+    const documentAndSettings = await documentsManager.get(params.textDocument.uri);
+    if (!documentAndSettings) return [];
+    return (documentAndSettings.document as JaktTextDocument).jaktInlayHints;
 });
-
-// Make the text document manager listen on the connection
-// for open, change and close text document events
-documents.listen(connection);
 
 // Listen on the connection
 connection.listen();

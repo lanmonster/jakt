@@ -32,6 +32,7 @@ import runCompiler from "./utils/runCompiler";
 import clickableFilePosition from "./utils/clickableFilePosition";
 import { validateTextDocument } from "./utils/validateTextDocument";
 import goToDefinition from "./utils/goToDefinition";
+import { capabilities } from "./capabilities";
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -40,25 +41,19 @@ const connection = createConnection(ProposedFeatures.all);
 // Create a simple text document manager.
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
-let hasConfigurationCapability = false;
-let hasWorkspaceFolderCapability = false;
-let hasDiagnosticRelatedInformationCapability = false;
-
 connection.onInitialize((params: InitializeParams) => {
-    const capabilities = params.capabilities;
-
     // Does the client support the `workspace/configuration` request?
     // If not, we fall back using global settings.
-    hasConfigurationCapability = !!(
-        capabilities.workspace && !!capabilities.workspace.configuration
+    capabilities.hasConfigurationCapability = !!(
+        params.capabilities.workspace && !!params.capabilities.workspace.configuration
     );
-    hasWorkspaceFolderCapability = !!(
-        capabilities.workspace && !!capabilities.workspace.workspaceFolders
+    capabilities.hasWorkspaceFolderCapability = !!(
+        params.capabilities.workspace && !!params.capabilities.workspace.workspaceFolders
     );
-    hasDiagnosticRelatedInformationCapability = !!(
-        capabilities.textDocument &&
-        capabilities.textDocument.publishDiagnostics &&
-        capabilities.textDocument.publishDiagnostics.relatedInformation
+    capabilities.hasDiagnosticRelatedInformationCapability = !!(
+        params.capabilities.textDocument &&
+        params.capabilities.textDocument.publishDiagnostics &&
+        params.capabilities.textDocument.publishDiagnostics.relatedInformation
     );
 
     const result: InitializeResult = {
@@ -80,7 +75,7 @@ connection.onInitialize((params: InitializeParams) => {
             documentRangeFormattingProvider: true,
         },
     };
-    if (hasWorkspaceFolderCapability) {
+    if (capabilities.hasWorkspaceFolderCapability) {
         result.capabilities.workspace = {
             workspaceFolders: {
                 supported: true,
@@ -92,7 +87,7 @@ connection.onInitialize((params: InitializeParams) => {
 });
 
 connection.onInitialized(() => {
-    if (hasConfigurationCapability) {
+    if (capabilities.hasConfigurationCapability) {
         // Register for all configuration changes.
         connection.client.register(DidChangeConfigurationNotification.type, undefined);
     }
@@ -244,7 +239,7 @@ let globalSettings: Settings = defaultSettings;
 const documentSettings: Map<string, Thenable<Settings>> = new Map();
 
 connection.onDidChangeConfiguration(change => {
-    if (hasConfigurationCapability) {
+    if (capabilities.hasConfigurationCapability) {
         // Reset all cached document settings
         documentSettings.clear();
     } else {
@@ -260,7 +255,7 @@ connection.onDidChangeConfiguration(change => {
 });
 
 function getDocumentSettings(resource: string): Thenable<Settings> {
-    if (!hasConfigurationCapability) {
+    if (!capabilities.hasConfigurationCapability) {
         return Promise.resolve(globalSettings);
     }
     let result = documentSettings.get(resource);

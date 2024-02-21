@@ -24,12 +24,12 @@ export function handleHover(connection: Connection) {
             const stdout = await runCompiler(
                 connection,
                 text,
-                "-e " +
-                    convertPositionToIndex(params.position, text) +
-                    includeFlagForPath(params.textDocument.uri),
-                settings,
-                {},
-                document ? fileURLToPath(document.uri) : undefined
+                {
+                    "-e": convertPositionToIndex(params.position, text),
+                    "-I": includeFlagForPath(params.textDocument.uri),
+                    "--assume-main-file-path": fileURLToPath(document.uri),
+                },
+                settings
             );
 
             const lines = stdout.split("\n").filter(l => l.length > 0);

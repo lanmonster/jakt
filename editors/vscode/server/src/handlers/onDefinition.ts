@@ -23,12 +23,13 @@ export function handleDefinition(connection: Connection) {
             const stdout = await runCompiler(
                 connection,
                 text,
-                "-g " +
-                    convertPositionToIndex(params.position, text) +
-                    includeFlagForPath(params.textDocument.uri),
+                {
+                    "-g": convertPositionToIndex(params.position, text),
+                    "-I": includeFlagForPath(params.textDocument.uri),
+                    "--assume-main-file-path": fileURLToPath(document.uri),
+                },
                 settings,
-                {},
-                fileURLToPath(document.uri)
+                {}
             );
             return await goToDefinition(document, stdout);
         });
@@ -47,12 +48,12 @@ export function handleTypeDefinition(connection: Connection) {
             const stdout = await runCompiler(
                 connection,
                 text,
-                "-t " +
-                    convertPositionToIndex(params.position, text) +
-                    includeFlagForPath(params.textDocument.uri),
-                settings,
-                {},
-                fileURLToPath(document.uri)
+                {
+                    "-t": convertPositionToIndex(params.position, text),
+                    "-I": includeFlagForPath(params.textDocument.uri),
+                    "--assume-main-file-path": fileURLToPath(document.uri),
+                },
+                settings
             );
             return goToDefinition(document, stdout);
         });

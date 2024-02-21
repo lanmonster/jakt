@@ -31,10 +31,13 @@ export function handleDocumentFormat(
                 const stdout = await runCompiler(
                     connection,
                     text,
-                    "-f " + includeFlagForPath(params.textDocument.uri),
+                    {
+                        "-f": true,
+                        "-I": includeFlagForPath(params.textDocument.uri),
+                        "--assume-main-file-path": fileURLToPath(document.uri),
+                    },
                     settings,
-                    { allowErrors: false },
-                    fileURLToPath(document.uri)
+                    { allowErrors: false }
                 );
                 const formatted = stdout;
                 return [
@@ -68,15 +71,17 @@ export function handleDocumentRangeFormat(
                 const stdout = await runCompiler(
                     connection,
                     text,
-                    `--format-range ${convertPositionToIndex(
-                        params.range.start,
-                        text
-                    )}:${convertPositionToIndex(params.range.end, text)} -f ${includeFlagForPath(
-                        params.textDocument.uri
-                    )}`,
+                    {
+                        "--format-range": [
+                            convertPositionToIndex(params.range.start, text),
+                            convertPositionToIndex(params.range.end, text),
+                        ],
+                        "-f": true,
+                        "-I": includeFlagForPath(params.textDocument.uri),
+                        "--assume-main-file-path": fileURLToPath(document.uri),
+                    },
                     settings,
-                    { allowErrors: false },
-                    document ? fileURLToPath(document.uri) : undefined
+                    { allowErrors: false }
                 );
                 const formatted = stdout;
                 return [

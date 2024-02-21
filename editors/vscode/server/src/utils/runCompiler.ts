@@ -1,9 +1,10 @@
 import * as fs from "fs";
 import * as tmp from "tmp";
-import { Settings } from "../types";
+import { CompilerFlags, Settings } from "../types";
 import { promisify } from "node:util";
 import { exec as execWithCallback } from "node:child_process";
 import { Connection } from "vscode-languageserver/node";
+import compilerFlagsToString from "./compilerFlagsToString";
 
 const tmpFile = tmp.fileSync();
 
@@ -12,10 +13,9 @@ const exec = promisify(execWithCallback);
 export default async function runCompiler(
     connection: Connection,
     text: string,
-    flags: string,
+    flags: CompilerFlags,
     settings: Settings,
-    options: { allowErrors?: boolean } = {},
-    path?: string
+    options: { allowErrors?: boolean } = {}
 ): Promise<string> {
     const allowErrors = options.allowErrors === undefined ? true : options.allowErrors;
 
@@ -25,12 +25,10 @@ export default async function runCompiler(
         // connection.console.log(e);
     }
 
-    const assume_main_file = path ? `--assume-main-file-path ${path}` : ``;
-    const command = `${
-        settings.compiler.executablePath
-    } ${assume_main_file} ${flags} ${settings.extraCompilerImportPaths
-        .map(x => "-I " + x)
-        .join(" ")} ${tmpFile.name}`;
+    const command = `${settings.compiler.executablePath} ${compilerFlagsToString(
+        flags,
+        settings.extraCompilerImportPaths
+    )} ${tmpFile.name}`;
 
     console.info(`Running command: ${command}`);
 

@@ -33,10 +33,12 @@ export function handleCompletion(connection: Connection) {
                 const stdout = await runCompiler(
                     connection,
                     text,
-                    "-m " + index + includeFlagForPath(request.textDocument.uri),
-                    settings,
-                    {},
-                    document ? fileURLToPath(document.uri) : undefined
+                    {
+                        "-m": index,
+                        "-I": includeFlagForPath(request.textDocument.uri),
+                        "--assume-main-file-path": fileURLToPath(document.uri),
+                    },
+                    settings
                 );
 
                 const lines = stdout.split("\n").filter(l => l.length > 0);

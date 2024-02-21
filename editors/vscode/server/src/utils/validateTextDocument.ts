@@ -34,10 +34,15 @@ export default async function validateTextDocument(
         const stdout = await runCompiler(
             connection,
             text,
-            "-c --type-hints --try-hints -j" + includeFlagForPath(textDocument.uri),
-            settings,
-            {},
-            fileURLToPath(textDocument.uri)
+            {
+                "-c": true,
+                "--type-hints": true,
+                "--try-hints": true,
+                "-j": true,
+                "-I": includeFlagForPath(textDocument.uri),
+                "--assume-main-file-path": fileURLToPath(textDocument.uri),
+            },
+            settings
         );
 
         textDocument.jaktInlayHints = [];

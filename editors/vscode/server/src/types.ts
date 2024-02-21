@@ -26,3 +26,19 @@ export type Settings = {
         showInferredTypes: boolean;
     };
 };
+
+export type CompilerFlags = {
+    "-m"?: number;
+    "-I"?: string;
+    "-g"?: number;
+    "-t"?: number;
+    "-f"?: true;
+    "--format-range"?: [number, number];
+    "--print-symbols"?: true;
+    "-e"?: number;
+    "-c"?: true;
+    "--type-hints"?: true;
+    "--try-hints"?: true;
+    "-j"?: true;
+    "--assume-main-file-path"?: string;
+};

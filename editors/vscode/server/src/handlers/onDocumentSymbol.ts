@@ -27,10 +27,12 @@ export function handleDocumentSymbol(connection: Connection): DocumentSymbolHand
             const stdout = await runCompiler(
                 connection,
                 text,
-                "--print-symbols " + includeFlagForPath(textDocument.uri),
-                settings,
-                {},
-                fileURLToPath(document.uri)
+                {
+                    "--print-symbols": true,
+                    "-I": includeFlagForPath(textDocument.uri),
+                    "--assume-main-file-path": fileURLToPath(document.uri),
+                },
+                settings
             );
             const toSymbolDefinition = (symbol: JaktSymbol): DocumentSymbol => {
                 const kind_map = {
